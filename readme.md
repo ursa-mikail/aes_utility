@@ -58,3 +58,86 @@ Return Values: The function returns both the ciphertext and the tag, which is ne
 ✅ Stable Timestamp: The timestamp used in encryption is reused in decryption to ensure the AAD matches.
 
 ✅ Authenticated Encryption: AES-GCM protects both confidentiality and integrity with the AAD and the authentication tag.
+
+## AES XEX and XTS Intro
+XEX, XTS: define 2 keys (K1 and K2). If we use 128-bit AES, then we generate two keys which are 128 bits long. Next, we define an input block (P) and a sector number (i) and a block number (j), and create a tweak (X ):
+
+
+The parameters are the encryption key, and the sector number, in order to encrypt and decrypt. 
+The tweak acts as an IV.
+
+<img src="aes_xex_intro_00.png" alt="aes_xex_intro_00">
+
+
+<img src="aes_xex_latex.png" alt="aes_xex_latex">
+
+```
+X = E_{K_2}(i) \otimes 2^j \\
+\text{Note, } \otimes \text{ is a multiplication (within a finite field of 127). The ciphertext (C) for each block is then:} \\
+C = P \oplus X \\
+C = E_{K_1}(C) \oplus X \\
+
+\text{To decrypt, we do the opposite:} \\
+X = E_{K_2}(i) \otimes 2^j \\
+\text{The plaintext (P) for each block is then:} \\
+P = C \oplus X \\
+P = E^{-1}_{K_1}(P) \oplus X
+
+```
+
+## AES XEX Ciphering
+AES-XEX (Xor-Encrypt-Xor) mode is a tweakable encryption mode often used for disk encryption. It works similarly to AES-ECB but introduces a tweak value to diversify ciphertexts for the same plaintext.
+
+<img src="aes_xex_intro_01.png" alt="aes_xex_intro_01">
+
+1. Tweak: Random 16-byte value that makes the same plaintext encrypted differently each time.
+
+2. Encryption Flow:
+Encrypt the tweak using AES.
+XOR the plaintext with the encrypted tweak.
+Encrypt the result.
+XOR the ciphertext with the encrypted tweak again.
+
+3. Decryption Flow: Reverse the encryption process.
+
+### Security Considerations:
+Always use a random tweak for each encryption operation.
+
+Ensure that the key size matches the AES mode (128, 192, or 256 bits).
+
+AES-XEX provides semantic security if the tweak is unique for each block.
+
+## AES XTS Ciphering
+AES-XTS (XEX-based Tweaked CodeBook mode with ciphertext stealing) is a widely-used encryption mode designed for encrypting data on storage devices. It is more advanced than XEX because it handles data lengths that are not a multiple of the block size.
+
+A sector of a size of 512 bytes will store 32, 16-byte AES-blocks (a block in AES is 128 bits long). In this way, for a single sector, we call the encrypt/decrypt method 32 times using the same i value, but different j values (0 to 31).
+
+Most fully encrypted disks use the AES-XTS block cipher mode, and which is defined in IEEE Standard 1619. It is now implemented in many USB encrypted devices, and with Microsoft Bitlocker for Windows 10, TrueCrypt, VeraCrypt, OpenSSL, and Mac OSX FileVault.
+
+
+<img src="XTS_mode_encryption.svg.png" alt="XTS_mode_encryption">
+
+AES-XTS Requirements:
+Key: 2 separate 256-bit (32-byte) keys (total: 512-bit key).
+
+Tweak: A 128-bit (16-byte) tweak value, typically derived from the sector number.
+
+Encryption Process:
+XTS encrypts each block of plaintext with a tweak based on the sector number.
+
+Ciphertext stealing allows handling of plaintexts that aren't a multiple of the block size.
+
+Decryption Process:
+Mirrors encryption, using the same keys and tweak.
+
+Ensure the same sector number (tweak) is provided.
+
+### Security Considerations:
+Always use unique sector numbers (or other tweaks) to prevent ciphertext reuse.
+
+Ensure 512-bit key (two 256-bit keys) for AES-XTS.
+
+Caveat: XTS weaknesses exists. XTS mode is susceptible to data manipulation and tampering. It is not suitable for message encryption—use it primarily for disk encryption.
+
+
+
