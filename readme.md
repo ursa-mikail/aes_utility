@@ -1,3 +1,7 @@
+## AES GCM
+
+<img src="aes_gcm_intro.png" alt="aes_gcm_intro">
+
 ## AES PRF RNG
 Use aes gcm as PRF RNG, randomly produce the random seeds (including its keys), and produce random hex of N bytes, and plot the distribution.
 
