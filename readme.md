@@ -167,4 +167,41 @@ For decryption you need a secure compare function.
 
 AES-CTR + HMAC-SHA256 (encrypt then MAC) is message-committing and therefore can be safely used with algorithms like OPAQUE.
 
+## AES-CBC Weaknesses Demo
 
+Illustration of the CBC-MAC vulnerabilities and their implications. This snippet focuses on:
+
+1. Variable-Length Message Forgery Attack – Demonstrating how an attacker can forge valid MACs by chaining message blocks.
+
+Implementation doesn’t handle variable-length messages.
+CBC-MAC is very similar to the classic CBC mode for encryption, with a few major differences. First, the Initialization Vector (IV) is a fixed value, usually zero. Second, CBC-MAC only outputs the last block of the ciphertext — this single value forms the MAC. Many dumb implementations stop here. And that leads to big problems.
+
+If system allows for variable-length messages — as it should — there is a simple attack that allows you to forge new messages. First, get a MAC T on a message M1. Now XOR the tag T into the first block of some arbitrary second message M2, and get a MAC on the modified version of M2.
+
+The resulting tag T’ turns out to be a valid MAC for the combined message (M1 || M2). This is a valid forgery, and in some cases can actually be useful.
+
+The standard fix to prepend the message length to the first block of the message before MACing it. But a surprisingly large number of (dumb) implementations skip this extra step. And many CBC-MAC implementations are dumb implementations.
+
+
+2. Random IV (Initialization Vector) Weakness – Highlighting how using a random IV in CBC-MAC allows tampering and message manipulation.
+
+Implementation uses a random IV.
+If CBC-MAC with a fixed IV is great, surely CBC-MAC with a random IV must be super-great. But no, it isn’t.
+
+Using a random (or variable IV) is bad for the simple reason that verifying a CBC-MAC requires you to know the IV, and to know the IV you probably need to read it from somewhere. Typically this means the same untrusted place where you were storing your message.
+
+If the attacker can change the CBC-MAC IV, they can also change the first block of the MACed message in an equivalent manner. This works because the first step of CBC-MAC is to XOR the IV with the message. There are all kinds of silly variants of this problem, and all of them hurt.
+
+
+Examples to illustrate two key CBC-MAC vulnerabilities:
+
+Variable-Length Message Forgery: Demonstrates how an attacker can manipulate the MAC by chaining messages.
+
+Random IV Weakness: Shows how altering the IV can lead to incorrect MACs, compromising integrity.
+
+
+When the same key is used for both encryption (CTR mode) and message authentication (CBC-MAC), it creates a vulnerability where an attacker can exploit nonce reuse to recover the keystream. 
+
+Attack: By requesting the encryption of small files with consecutive counter values (C, C+1, etc.) of of the chosen ciphertext, the attacker can use the CBC-MAC outputs to reconstruct the keystream. With this keystream, they can decrypt any ciphertext encrypted under the same key and nonce (cause nonce reset amnesia). (The CBC-MAC of each of these files lets me recreate the CTR-mode keystream the attacker need to decrypt the original ciphertext. Now attacker can have the message.)
+
+This highlights why using separate keys for encryption and MAC is critical to prevent such attacks and maintain message confidentiality.
