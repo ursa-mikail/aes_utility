@@ -141,5 +141,30 @@ Ensure 512-bit key (two 256-bit keys) for AES-XTS.
 
 Caveat: XTS weaknesses exists. XTS mode is susceptible to data manipulation and tampering. It is not suitable for message encryption—use it primarily for disk encryption.
 
+## AES-CBC-Hmac
+If you must use AES-CBC, you must MAC ciphertext (and IV). Devise some sort of key-separation mechanism so you’re not using the same key for 2 different algorithms:
+
+encKey := HmacSha256(“encryption-cbc-hmac”, key)
+macKey := HmacSha256(“authentication-cbc-hmac”, key)
+iv := RandomBytes(16)
+ciphertext := AesCbc(plaintext, iv, encKey)
+tag := HmacSha256(iv + ciphertext, macKey)
+For decryption you need a secure compare function. If one is not available to you, or you cannot guarantee it will run in constant time, a second HMAC call with a random per-comparison key will suffice.
+
+AES-CBC + HMAC-SHA256 (encrypt then MAC) is message-committing and therefore can be safely used with algorithms like OPAQUE.
+
+The Signal Protocol uses AES-CBC + HMAC-SHA2 for message encryption.
+
+## AES-CTR-Hmac
+If you must use AES-CTR, the same rules apply as for AES-CBC:
+
+encKey := HmacSha256(“encryption-ctr-hmac”, key)
+macKey := HmacSha256(“authentication-ctr-hmac”, key)
+nonce := RandomBytes(16)
+ciphertext := AesCtr(plaintext, nonce, encKey)
+tag := HmacSha256(nonce + ciphertext, macKey)
+For decryption you need a secure compare function.
+
+AES-CTR + HMAC-SHA256 (encrypt then MAC) is message-committing and therefore can be safely used with algorithms like OPAQUE.
 
 
